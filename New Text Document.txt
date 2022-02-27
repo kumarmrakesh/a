@@ -1,0 +1,587 @@
+import java.1
+import java.net.*;
+import java.io.*;
+  
+public class Client
+{
+    private Socket socket            = null;
+    private DataInputStream  input   = null;
+    private DataOutputStream out     = null;
+    public Client(String address, int port)
+    {try
+        {
+            socket = new Socket(address, port);
+            System.out.println("Connected");
+            input  = new DataInputStream(System.in);
+            out    = new DataOutputStream(socket.getOutputStream());
+        }
+        catch(UnknownHostException u)
+        {
+            System.out.println(u);
+        }
+        catch(IOException i)
+        {
+            System.out.println(i);
+        }
+        String line = "";
+        while (!line.equals("Over"))
+        {try
+            {
+                line = input.readLine();
+                out.writeUTF(line);
+            }
+            catch(IOException i)
+            {
+                System.out.println(i);
+            }}
+try
+        {
+            input.close();
+            out.close();
+            socket.close();
+        }
+        catch(IOException i)
+        {
+            System.out.println(i);
+        }
+    }public static void main(String args[])
+    {
+        Client client = new Client("127.0.0.1", 5000);
+    }
+}
+
+SERVER:
+import java.net.*;
+import java.io.*;
+  
+public class Server
+{
+private Socket socket   = null;
+private ServerSocket    server   = null;
+    private DataInputStream in       =  null;
+    public Server(int port)
+    {
+    try
+        {
+            server = new ServerSocket(port);
+            System.out.println("Server started");
+  
+            System.out.println("Waiting for a client ...");
+  
+            socket = server.accept();
+            System.out.println("Client accepted");
+            in = new DataInputStream(
+            new BufferedInputStream(socket.getInputStream()));
+  
+            String line = "";
+  	    while (!line.equals("Over"))
+            {
+                try
+                {
+                    line = in.readUTF();
+                    System.out.println(line);
+  
+                }
+                catch(IOException i)
+                {
+                    System.out.println(i);
+                }
+            }
+            System.out.println("Closing connection");
+  	    socket.close();
+            in.close();
+        }
+        catch(IOException i)
+        {
+            System.out.println(i);
+        }
+    }
+  
+    public static void main(String args[])
+    {
+        Server server = new Server(5000);
+    }
+}
+
+import java.2
+import java.io.*;
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+
+public class ChatSocketClient {
+private Socket socket = null;
+private InputStream inStream = null;
+private OutputStream outStream = null;
+
+public ChatSocketClient() {
+
+}
+
+public void createSocket() {
+try {
+socket = new Socket("localHost", 3339);
+System.out.println("Connected");
+inStream = socket.getInputStream();
+outStream = socket.getOutputStream();
+createReadThread();
+createWriteThread();
+} catch (UnknownHostException u) {
+u.printStackTrace();
+} catch (IOException io) {
+io.printStackTrace();
+}}
+
+public void createReadThread() {
+Thread readThread = new Thread() {
+public void run() {
+while (socket.isConnected()) {
+
+try {
+byte[] readBuffer = new byte[200];
+int num = inStream.read(readBuffer);
+
+if (num > 0) {
+byte[] arrayBytes = new byte[num];
+System.arraycopy(readBuffer, 0, arrayBytes, 0, num);
+String recvedMessage = new String(arrayBytes, "UTF-8");
+System.out.println("Received message :" + recvedMessage);
+}
+;
+}catch (SocketException se){
+System.exit(0);
+
+} catch (IOException i) {
+i.printStackTrace();
+}
+
+}
+}
+};
+readThread.setPriority(Thread.MAX_PRIORITY);
+readThread.start();
+}
+
+public void createWriteThread() {
+Thread writeThread = new Thread() {
+public void run() {
+while (socket.isConnected()) {
+
+ 
+try {
+BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
+sleep(100);
+String typedMessage = inputReader.readLine();
+if (typedMessage != null && typedMessage.length() > 0) {
+synchronized (socket) {
+outStream.write(typedMessage.getBytes("UTF-8"));
+sleep(100);
+}}
+;
+//System.arraycopy();
+
+} catch (IOException i) {
+i.printStackTrace();
+} catch (InterruptedException ie) {
+ie.printStackTrace();
+}}}};
+writeThread.setPriority(Thread.MAX_PRIORITY);
+writeThread.start();
+}
+
+public static void main(String[] args) throws Exception {
+ChatSocketClient myChatClient = new ChatSocketClient();
+myChatClient.createSocket();
+/*myChatClient.createReadThread();
+myChatClient.createWriteThread();*/
+}}
+Server:
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+public class ChatSocketServer {
+private ServerSocket severSocket = null;
+private Socket socket = null;
+private InputStream inStream = null;
+private OutputStream outStream = null;
+public ChatSocketServer() {
+}
+public void createSocket() {
+try {
+ServerSocket serverSocket = new ServerSocket(3339);
+while (true) {
+socket = serverSocket.accept();
+inStream = socket.getInputStream();
+outStream = socket.getOutputStream();
+System.out.println("Connected");
+createReadThread();
+createWriteThread();
+}
+} catch (IOException io) {
+io.printStackTrace();
+}}
+public void createReadThread() {
+Thread readThread = new Thread() {
+public void run() {
+while (socket.isConnected()) {
+try {
+byte[] readBuffer = new byte[200];
+int num = inStream.read(readBuffer);
+if (num > 0) {
+byte[] arrayBytes = new byte[num];
+System.arraycopy(readBuffer, 0, arrayBytes, 0, num);
+String recvedMessage = new String(arrayBytes, "UTF-8");
+System.out.println("Received message :" + recvedMessage);
+} else {
+notify();
+}
+;
+} catch (SocketException se) {
+System.exit(0);
+} catch (IOException i) {
+i.printStackTrace();
+}}}};
+readThread.setPriority(Thread.MAX_PRIORITY);
+readThread.start();
+}
+public void createWriteThread() {
+Thread writeThread = new Thread() {
+public void run() {
+while (socket.isConnected()) {
+try {
+BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
+sleep(100);
+String typedMessage = inputReader.readLine();
+if (typedMessage != null && typedMessage.length() > 0) {
+synchronized (socket) {
+outStream.write(typedMessage.getBytes("UTF-8"));
+sleep(100);
+}}
+;
+} catch (IOException i) {
+i.printStackTrace();
+} catch (InterruptedException ie) {
+ie.printStackTrace();
+}}}};
+writeThread.setPriority(Thread.MAX_PRIORITY);
+writeThread.start();
+}
+public static void main(String[] args) {
+ChatSocketServer chatServer = new ChatSocketServer();
+chatServer.createSocket();
+}}
+
+import java.3
+import java.io.BufferedInputStream; 
+import java.io.File; 
+import java.io.FileInputStream; 
+import java.io.OutputStream; 
+import java.net.InetAddress; 
+import java.net.ServerSocket; 
+import java.net.Socket;
+public class FileTransferServer { 
+  
+ public static void main(String[] args) throws Exception { 
+ 
+ ServerSocket ssock = new ServerSocket(5000);  Socket socket = ssock.accept(); 
+ InetAddress IA = InetAddress.getByName("localhost");   
+ File file = new File("data1.txt"); 
+ FileInputStream fis = new FileInputStream(file);  BufferedInputStream bis = new BufferedInputStream(fis);   
+ OutputStream os = socket.getOutputStream();   
+ byte[] contents; 
+ long fileLength = file.length(); 
+ long current = 0; 
+  
+ long start = System.nanoTime(); 
+ while(current!=fileLength){ 
+ int size = 10000; 
+ if(fileLength - current >= size) 
+ current += size;  
+ else{ 
+ size = (int)(fileLength - current);  current = fileLength; 
+ } 
+ contents = new byte[size]; 
+ bis.read(contents, 0, size); 
+ os.write(contents); 
+ System.out.print("Sending file!"); 
+ }  
+  
+ os.flush(); 
+ socket.close(); 
+ ssock.close(); 
+ System.out.println("File sent succesfully!");  } 
+} 
+
+Client:
+import java.io.*; 
+import java.net.*; 
+public class FileTransferClient { 
+  
+ public static void main(String[] args) throws Exception{   
+ Socket socket = new  
+Socket(InetAddress.getByName("localhost"), 5000);  
+byte[] contents = new byte[10000]; 
+ 
+ FileOutputStream fos = new FileOutputStream("image.png");  System.out.println("Saved as: /data.txt"); 
+ BufferedOutputStream bos = new BufferedOutputStream(fos);  InputStream is = socket.getInputStream(); 
+ int bytesRead = 0; 
+  
+ while((bytesRead=is.read(contents))!=-1) 
+ bos.write(contents, 0, bytesRead); 
+ bos.flush(); 
+ socket.close(); 
+  
+ System.out.println("File saved successfully!"); 
+ }}
+
+import java.3
+import java.io.*;
+import java.net.*;
+  
+public class download {
+    public static void DownloadWebPage(String webpage)
+    {
+        try {
+  
+            URL url = new URL(webpage);
+            BufferedReader readr = new BufferedReader(new InputStreamReader(url.openStream()));
+            BufferedWriter writer = new BufferedWriter(new FileWriter("Download.html"));
+            String line;
+            while ((line = readr.readLine()) != null) {
+                writer.write(line);
+            }
+  		readr.close();
+            writer.close();
+            System.out.println("Successfully Downloaded.");
+        }
+        catch(MalformedURLException mue) {
+            System.out.println("Malformed URL Exception raised");
+        }
+        catch (IOException ie) {
+            System.out.println("IOException raised");
+        }
+    }
+    public static void main(String args[])
+        throws IOException
+    {
+        String url = "https://www.geeksforgeeks.org/";
+        DownloadWebPage(url);
+    }
+}
+
+import java.4
+import java.io.*;
+import java.net.*;
+public class udpdnsclient
+{
+public static void main(String args[])throws IOException
+{
+BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+DatagramSocket clientsocket = new DatagramSocket();
+InetAddress ipaddress;
+if (args.length == 0)
+ipaddress = InetAddress.getLocalHost();
+else
+ipaddress = InetAddress.getByName(args[0]);
+byte[] senddata = new byte[1024];
+byte[] receivedata = new byte[1024];
+int portaddr = 1362;
+System.out.print("Enter the hostname : ");
+String sentence = br.readLine();
+senddata = sentence.getBytes();
+DatagramPacket pack = new DatagramPacket(senddata,senddata.length,
+ipaddress,portaddr);
+clientsocket.send(pack);
+DatagramPacket recvpack =new DatagramPacket(receivedata,receivedata.length);
+clientsocket.receive(recvpack);
+String modified = new String(recvpack.getData());
+System.out.println("IP Address: " + modified);
+clientsocket.close();
+}}
+SERVER:
+import java.io.*;
+import java.net.*;
+public class udpdnsserver
+{
+private static int indexOf(String[] array, String str)
+{
+str = str.trim();
+for (int i=0; i < array.length; i++)
+{
+if (array[i].equals(str))
+return i;
+}
+return -1;
+}
+public static void main(String arg[])throws IOException
+{
+String[] hosts = {"yahoo.com", "gmail.com","cricinfo.com", "facebook.com"};
+String[] ip = {"68.180.206.184", "209.85.148.19","80.168.92.140", "69.63.189.16"};
+System.out.println("Press Ctrl + C to Quit");
+while (true)
+{
+DatagramSocket serversocket=new DatagramSocket(1362);
+byte[] senddata = new byte[1021];
+byte[] receivedata = new byte[1021];
+DatagramPacket recvpack = new DatagramPacket(receivedata, receivedata.length);
+serversocket.receive(recvpack);
+String sen = new String(recvpack.getData());
+InetAddress ipaddress = recvpack.getAddress();
+int port = recvpack.getPort();
+String capsent;
+System.out.println("Request for host " + sen);
+if(indexOf (hosts, sen) != -1)
+capsent = ip[indexOf (hosts, sen)];
+else
+capsent = "Host Not Found";
+senddata = capsent.getBytes();
+DatagramPacket pack = new DatagramPacket (senddata, senddata.length,ipaddress,port);
+serversocket.send(pack);
+serversocket.close();
+}}}
+
+
+
+import java.5
+CLIENT:
+import java.io.*;
+import java.net.*;
+import java.util.*;
+class Clientarp
+{
+public static void main(String args[])
+{
+try
+{
+BufferedReader in=new BufferedReader(new InputStreamReader(System.in));
+Socket clsct=new Socket("127.0.0.1",4040);
+DataInputStream din=new DataInputStream(clsct.getInputStream());
+DataOutputStream dout=new DataOutputStream(clsct.getOutputStream());
+System.out.println("Enter the logical address(ip):");
+String str1=in.readLine();
+dout.writeBytes(str1+'\n');
+String str=din.readLine();
+System.out.println("The Physical Address is:"+str);
+clsct.close();
+}
+catch(Exception e)
+{
+System.out.println(e);
+}
+}
+}
+
+SERVER:
+import java.io.*;
+import java.net.*;
+import java.util.*;
+class Serverarp
+{
+public static void main(String args[])
+{
+try
+{
+ServerSocket obj=new ServerSocket(4040);
+Socket obj1=obj.accept();
+while(true)
+{
+DataInputStream din=new DataInputStream(obj1.getInputStream());
+DataOutputStream dout=new DataOutputStream(obj1.getOutputStream());
+String str=din.readLine();
+String ip[]={"165.165.80.80","165.165.79.1"};
+String mac[]={"6A:08:AA:c2","8A:BC:E3:FA"};
+for(int i=0;i<ip.length;i++)
+{
+if(str.equals(ip[i]))
+{
+dout.writeBytes(mac[i]+'\n');
+break;
+}
+}
+obj.close();
+}
+}
+catch(Exception e)
+{
+System.out.println(e);
+}
+}
+}
+
+
+
+import.java.6
+import java.io.*;
+import java.net.*;
+import java.util.*;
+class Clientrarp12
+{
+public static void main(String args[])
+{
+try
+{
+DatagramSocket client=new DatagramSocket();
+InetAddress addr=InetAddress.getByName("127.0.0.1");
+byte[] sendbyte=new byte[1024];
+byte[] recievebyte=new byte[1024];
+BufferedReader in=new BufferedReader(new InputStreamReader(System.in));
+System.out.println("Enter the physical address(MAC):");
+String str=in.readLine();
+sendbyte=str.getBytes();
+DatagramPacket sender=new DatagramPacket(sendbyte,sendbyte.length,addr,1309);
+client.send(sender);
+DatagramPacket reciever=new DatagramPacket(recievebyte,recievebyte.length,addr,1309);
+client.receive(reciever);
+String s=new String(reciever.getData());
+System.out.println("The Logical Address is(IP):"+s.trim());
+client.close();
+}
+catch(Exception e)
+{
+System.out.println(e);
+}
+}
+}
+
+SERVER:
+import java.io.*;
+import java.net.*;
+import java.util.*;
+class Serverrarp12
+{
+public static void main(String[] rgs)
+{
+try
+{
+DatagramSocket server=new DatagramSocket(1309);
+while(true)
+{
+byte[] sendbyte=new byte[1024];
+byte[] receivebyte=new byte[1024];
+DatagramPacket receiver=new DatagramPacket(receivebyte,receivebyte.length);
+server.receive(receiver);
+String str=new String(receiver.getData());
+String s=str.trim();
+System.out.println(s);
+InetAddress addr=receiver.getAddress();
+int port=receiver.getPort();
+String ip[]={"165.165.80.80","165.165.79.1"};
+String mac[]={"6A:08:AA:C2","8A:BC:E3:FA"};
+for(int i=0;i<ip.length;i++)
+{
+if(s.equals(mac[i]))
+{
+sendbyte=ip[i].getBytes();
+DatagramPacket sender=new DatagramPacket(sendbyte,sendbyte.length,addr,port);
+server.send(sender);
+break;
+}
+}
+break;
+}
+}
+catch(Exception e)
+{
+System.out.println(e);
+}}}
+
